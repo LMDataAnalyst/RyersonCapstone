@@ -1,0 +1,1028 @@
+---
+Capstone
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+setwd("~/Ryerson Cert/capstone/R code")
+
+install.packages("twitteR")
+install.packages("ROAuth")
+library("twitteR")
+library("ROAuth")
+install.packages("wordcloud")
+install.packages("tm")
+install.packages("xlsx")
+# install.packages("XLConnect")
+library("wordcloud")
+library("tm")
+library("xlsx")
+# library("XLConnect")
+install.packages("rtweet")
+library("rtweet")
+install.packages("httpuv")
+library("httpuv")
+install.packages("caret")
+
+library(RTextTools)
+library(e1071)
+library(dplyr)
+library(caret)
+install.packages("openxlsx", dependencies = TRUE)
+library ("openxlsx")
+library(dplyr)
+
+
+#install.packages("~/R/win-library/3.4/stringi_1.2.4.zip", repos=NULL, type = "win.binary")
+install.packages("stringi") 
+install.packages("plyr") 
+library(plyr)
+
+library(stringr)
+install.packages("tidytext")
+library(tidytext)
+
+
+
+
+
+### fetching tweets ###
+
+
+library("ROAuth")
+library("wordcloud")
+library("tm")
+
+my_consumer_key <- "p75Cz4TobtdXCNdPONZYqHLoj"
+my_consumer_secret <- "YUwK98QpqhhhcfPUppixexln3rdtSOVjLDwLmUatZK01wOnmHb"
+my_access_token <- '1044791484812283904-Ej3p6fOAZUbTcRhUMdBU9Anx9MdR4w'
+my_access_secret <- 'bfzDZJ93QX0smCGEbDA3ixb1IvkFdmNqWYvCrmsKq4YlJ'
+
+
+
+
+```
+
+
+# 
+
+```{r}
+
+#--------------------------using rTweet
+#create_token(
+ # app = "Lesley Milley Text Analytics",
+ # consumer_key = my_consumer_key,
+ # consumer_secret = my_consumer_secret,access_token = NULL, access_secret = NULL)
+
+
+#search_string <- '@jen_keesmaat OR jenkeesmaat OR johntory OR keesmaat OR #keesmaatformayor OR jen_keesmaat OR #votejohntory OR #keesmaat4mayor OR 
+#(#topoli OR topoli OR toronto OR toelxn OR #toronto OR #toelxn (#tory OR tory OR jen OR jennifer)) '
+
+#no.of.tweets <- 5000
+# uncomment line below to collect more tweets
+#tweets <- search_tweets(search_string, n=no.of.tweets,  lang="en", type = 'recent')
+
+# import new data
+#below run around 5 pm?
+#tweetsOct19<- search_tweets(search_string, n=no.of.tweets,  lang="en", type = 'recent')
+# below run at 2 pm 
+#tweetsOct21<- search_tweets(search_string, n=no.of.tweets,  lang="en", type = 'recent')
+# 6 pm on 22nd
+#tweetsOct22<- search_tweets(search_string, n=no.of.tweets,  lang="en", type = 'recent')
+# at noon on 23
+#tweetsOct23<- search_tweets(search_string, n=no.of.tweets,  lang="en", type = 'recent')
+
+# dont touch the two below. these are for saving
+#tweetssave<-tweets
+#tweetsOct15<-tweets
+
+#saveRDS(tweets, file="Oct15tweets.rds")
+ tweets_restore <- readRDS("Oct15tweets.rds")
+ tweetstry<-tweets_restore
+#saveRDS(tweetsOct19, file="Oct19tweets.rds")
+#saveRDS(tweetsOct21, file="Oct21tweets.rds")
+#saveRDS(tweetsOct22, file="Oct22tweets.rds")
+#saveRDS(tweetsOct23, file="Oct23tweets.rds")
+
+head(tweetstry)
+class(tweetstry)
+#str(tweets)
+
+
+```
+
+
+
+
+```
+
+
+
+
+```{r}
+
+#openxlsx::write.xlsx(as.data.frame(tweets), file= "Oct15.xlsx", sheetName="Sheet1", row.names=TRUE,  col.names=TRUE, #append=FALSE)
+
+# import the annotated tweets this is the rolled up version
+
+#annotatedtweet <- read.xlsx("Oct15 edited data to import sheet only one column.xlsx",  1)
+#table(annotatedtweet$Class)
+#summary(annotatedtweet)
+
+# import the annotated tweets this maintians the sentiment for john and jen
+
+#annotatedtweetfull <- read.xlsx("Oct15 edited data single column all categories.xlsx",  1)
+#table(annotatedtweetfull$class)
+#summary(annotatedtweetfull)
+
+setwd("~/Ryerson Cert/capstone/R code")
+annotatedtweetfull2 <- read.xlsx("Oct15 edited data single column all categories v2.xlsx",  1)
+table(annotatedtweetfull2$class)
+summary(annotatedtweetfull2)
+
+#create limited data frame from df "tweets"
+
+
+
+fields_to_include <- read.xlsx("Columns.xlsx",  1)
+fields_to_include
+
+
+fields_to_include_with_quotes<-(fields_to_include[['field']])
+
+
+tweets<-tweetstry
+tweets_most_limited_extended<-tweets[,fields_to_include_with_quotes]
+
+
+# attach the new columns
+
+# link to annotatedtweetfull
+# tweets_for_modelling <- merge(tweets_most_limited,annotatedtweetfull2,by=c("status_id") )
+tweets_for_modelling_extended <- merge(tweets_most_limited_extended,annotatedtweetfull2,by=c("status_id") )
+
+# check
+
+#check<-anti_join(tweets_most_limited,annotatedtweetfull2,by=c("status_id") )
+#check_reverse<-anti_join(annotatedtweetfull2,tweets_most_limited,by=c("status_id") )
+
+check<-anti_join(tweets_most_limited_extended,annotatedtweetfull2,by=c("status_id") )
+check_reverse<-anti_join(annotatedtweetfull2,tweets_most_limited_extended,by=c("status_id") )
+
+# fix the number that excel has truncated - only do once 
+# the section below is required as Excel has truncated one of the numbers
+
+tweets_most_limited_extended[1470,"status_id"]
+annotatedtweetfull2[1470,"status_id"]
+annotatedtweetfull2[1470,"status_id"]<-tweets_most_limited_extended[1470,"status_id"]
+
+check2<-anti_join(tweets_most_limited_extended,annotatedtweetfull2,by=c("status_id") )
+check_reverse2<-anti_join(annotatedtweetfull2,tweets_most_limited_extended,by=c("status_id") )
+
+tweets_for_modelling_extended <- merge(tweets_most_limited_extended,annotatedtweetfull2,by=c("status_id") )
+
+```
+
+ 
+
+
+```{r}
+# bring in the sentistrength
+
+sentistrength <- read.xlsx("sentiresults.xlsx",  1)
+
+summary(sentistrength)
+
+tweets_for_modelling_extended_ss <- merge(tweets_for_modelling_extended,sentistrength,by=c("status_id") )
+
+check_ss<-anti_join(tweets_for_modelling_extended,sentistrength,by=c("status_id") )
+check_reverse_ss<-anti_join(sentistrength,tweets_for_modelling_extended,by=c("status_id") )
+
+(missing_id<-as.numeric(check$status_id))
+
+tweets_most_limited_extended[1470,"status_id"]
+sentistrength[1470,"status_id"]
+sentistrength[1470,"status_id"]<-tweets_most_limited_extended[1470,"status_id"]
+
+check_reverse_ss2<-anti_join(sentistrength, tweets_for_modelling_extended,by=c("status_id") )
+wrong_id<-as.numeric(check_reverse_ss2$status_id)
+
+tweets_for_modelling_extended_ss <- merge(tweets_for_modelling_extended,sentistrength,by=c("status_id") )
+
+
+
+
+```
+
+ 
+
+
+
+```{r}
+
+
+tweets_for_modelling_tidy <-data.frame(tweets_for_modelling_extended_ss[,c("status_id","text")])
+#names(tweets_for_modelling_tidy)[1] <- "text"
+#class(tweets_for_modelling_tidy)
+#str(tweets_for_modelling_tidy)
+
+head(tweets_for_modelling_tidy)
+
+tweets_tokens<-tweets_for_modelling_tidy %>% unnest_tokens(word,text)
+
+head(tweets_tokens)
+
+#library(plyr)
+install.packages("dplyr")
+library(dplyr)
+library(stringr)
+library(tidyr)
+
+afinn<-tweets_tokens %>% inner_join(get_sentiments("afinn")) %>%
+  group_by(status_id) %>%
+  summarise(afinn_sum =sum(score)) %>%
+  mutate(method = "AFINN")
+
+# putting back with the original file
+
+head(afinn)
+
+tweets_for_modelling_features <- merge(tweets_for_modelling_extended_ss,afinn,by=c("status_id") ,all.x=TRUE)
+# package and features
+#all.x is like a left join, all rows from tweets_for_modellng_extended_ss are included with the afinn rows where exist
+
+# preparing the other features
+tweets_for_modelling_features2<-tweets_for_modelling_features
+
+```
+
+
+
+
+```{r}
+# adding in a flag for a Toronto location
+#table(tweets_for_modelling_features2$location)
+locationwords<-c("Toronto","Etobicoke","Scarborough", "North York", "East York")
+# histogram of all features
+
+# tweets_for_modelling_features2$Toronto<-ifelse(grepl(locationwords,tweets_for_modelling_features2$location,ignore.case=TRUE),TRUE,FALSE)
+
+tweets_for_modelling_features2$Toronto<-ifelse(grepl(paste(locationwords, collapse = "|"),tweets_for_modelling_features2$location,ignore.case=TRUE),TRUE,FALSE)
+
+
+table(tweets_for_modelling_features2$location[tweets_for_modelling_features2$Toronto==TRUE])
+
+
+
+
+
+# flagging if the twitter account was made more than a month before the elecion
+
+str(tweets_for_modelling_features2$account_created_at)
+
+recent_date <- as.POSIXct("2018-08-31 23:59:59")
+
+tweets_for_modelling_features2$new_account<-ifelse(tweets_for_modelling_features2$account_created_at>recent_date,TRUE,FALSE)
+
+# Adding in a flag for mentions
+
+tweets_for_modelling_features2$reply_flag<-ifelse(!is.na(tweets_for_modelling_features2$reply_to_user_id) ,TRUE,FALSE)
+
+tweets_for_modelling_features2$mentions_flag<-ifelse( !is.na(tweets_for_modelling_features2$mentions_user_id) ,TRUE,FALSE)
+
+# adding in a flag if a URL is present
+
+tweets_for_modelling_features2$URL_flag<-ifelse( !is.na(tweets_for_modelling_features2$urls_url) ,TRUE,FALSE)
+
+# adding in a flag if a photo is present
+
+tweets_for_modelling_features2$photo_flag<-ifelse( !is.na(tweets_for_modelling_features2$media_type) ,TRUE,FALSE)
+
+# limiting the set to relevant features
+
+tweets_for_modelling_features_final<-tweets_for_modelling_features2[,c("status_id","Toronto","new_account","reply_flag","mentions_flag","URL_flag","afinn_sum","is_quote","is_retweet","favorite_count","retweet_count","followers_count","friends_count","statuses_count","verified","class","ss_Positive","ss_Negative","photo_flag")]
+
+
+# save the two datasets tweets_for_modelling_features_final and tweets_for_modelling_features2
+
+save(tweets_for_modelling_features_final,file="tweets_for_modelling_features_final.Rda")
+saveRDS(tweets_for_modelling_features_final,file="tweets_for_modelling_features_final.Rds")
+save(tweets_for_modelling_features2,file="tweets_for_modelling_features2.Rda")
+saveRDS(tweets_for_modelling_features2,file="tweets_for_modelling_features2.Rds")
+#normalize the numerical data
+
+
+# read in saved data
+
+tweets_for_modelling_features_final <- readRDS("tweets_for_modelling_features_final.Rds")
+tweets_for_modelling_features2<-readRDS("tweets_for_modelling_features2.Rds")
+
+```
+
+
+
+
+```{r}
+# Exploring the Features and Dimension Reduction
+
+summary(tweets_for_modelling_features_final)
+
+# 8 Numerical variables: afinn_sum, favorite_count, retweet_count, followers_count, friends_count, statuses_count, ss8 _Posiitve, ss_Negative
+# 9 Categorical variables: Toronto, new_account, reply_flag, mentions_flag, URL_flag, is_quote, is_retweet, verified,  photo_flag 
+
+# Explore which numerical features have too many missing values
+# only afinn_sum has missing values of the numeric. They can be converted to 0 
+
+#tweets_for_modelling_features_final[is.na(tweets_for_modelling_features_final$afinn_sum),"afinn_sum"]<-0
+#tweets_for_modelling_features2[is.na(tweets_for_modelling_features2$afinn_sum),"afinn_sum"]<-0
+
+
+# Explore which categorical features have too many missing values
+# none
+
+
+
+
+# plot the numeric variables
+library(reshape2)
+library(ggplot2)
+d <- melt(tweets_for_modelling_features_final)
+
+ggplot(d,aes(x = value)) + 
+    facet_wrap(~variable,scales = "free", space="free") +
+    facet_grid(class ~ variable, scales = "free", space="free") +
+     geom_histogram()
+     
+     
+ggplot(d,aes(x = value)) + 
+    facet_grid(variable ~ class, scales = "free") +
+     geom_histogram()
+
+# histograms of the numeric  
+# they look similar
+afinnhistogram<-ggplot(tweets_for_modelling_features_final,aes(afinn_sum))
+afinnhistogram +geom_histogram(binwidth=2) +labs(x="afinn score", y="frequency")+facet_wrap(~class,scales="free")
+
+# note outliers
+favcounthistogram<-ggplot(tweets_for_modelling_features_final,aes(favorite_count))
+favcounthistogram +geom_histogram(binwidth=2) +labs(x="favorite_count", y="frequency")+facet_wrap(~class,scales="free")
+
+# outliers and very different numbers
+retweet_counthistogram<-ggplot(tweets_for_modelling_features_final,aes(retweet_count))
+retweet_counthistogram +geom_histogram(binwidth=2) +labs(x="retweet_count", y="frequency")+facet_wrap(~class,scales="free")
+
+# long tails
+followers_counthistogram<-ggplot(tweets_for_modelling_features_final,aes(followers_count))
+followers_counthistogram +geom_histogram(binwidth=1000) +labs(x="followers_count", y="frequency")+facet_wrap(~class,scales="free")
+
+# maybe some difference
+friends_counthistogram<-ggplot(tweets_for_modelling_features_final,aes(friends_count))
+friends_counthistogram +geom_histogram(binwidth=1000) +labs(x="friends_count", y="frequency")+facet_wrap(~class,scales="free")
+
+# looked similar
+statuses_counthistogram<-ggplot(tweets_for_modelling_features_final,aes(statuses_count))
+statuses_counthistogram +geom_histogram(binwidth=10000) +labs(x="statuses_count", y="frequency")+facet_wrap(~class,scales="free")
+
+
+ss_Poshistogram<-ggplot(tweets_for_modelling_features_final,aes(ss_Positive))
+ss_Poshistogram +geom_histogram(binwidth=.2) +labs(x="ss_Positive", y="frequency")+facet_wrap(~class,scales="free")
+
+ss_Neghistogram<-ggplot(tweets_for_modelling_features_final,aes(ss_Negative))
+ss_Neghistogram +geom_histogram(binwidth=.2) +labs(x="ss_Negative", y="frequency")+facet_wrap(~class,scales="free")
+
+# trial      
+hist(tweets_for_modelling_features_final$afinn_sum)     
+     
+    
+table(d$variable)    
+
+# Interleaved histograms
+ggplot(tweets_for_modelling_features_final, aes(x=afinn_sum, fill=class, color=class)) +
+  geom_histogram(fill="white", position="dodge")+
+  theme(legend.position="top") +
+scale_color_brewer(palette="Dark2") +
+scale_fill_brewer(palette="Dark2")
+
+
+
+ggplot(tweets_for_modelling_features_final, aes(x=afinn_sum, fill=class, color=class)) +
+  geom_histogram(fill="white") +
+scale_color_brewer(palette="Dark2") + 
+scale_fill_brewer(palette="Dark2")
+
+
+    
+#afinn_histogram<-ggplot(d,aes(variable)) 
+#afinn_histogram +geom_histogram()+labs(x="sum of AFFIN score", y="Frequency")
+
+
+  
+  # some difference but a lot of overlap
+qplot(class, afinn_sum, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Afinn Score by class",
+   xlab="", ylab="Afinn score ")   
+    
+    # long tails make this an unhelpful graph
+qplot(class, favorite_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="favorite count by class",
+   xlab="", ylab="Number of Favorites of the  Tweet")   
+    
+    # possible, jen neg and other are much higher
+    qplot(class, retweet_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Retweet Count by class",
+   xlab="", ylab="Number of Retweets of the Tweet")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, followers_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of Followers of the Tweeter by class",
+   xlab="", ylab="Count of Followers")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, friends_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of Friends of the Tweeter by class",
+   xlab="", ylab="Count of Friends")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, statuses_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of All Tweets of the Tweeter by class",
+   xlab="", ylab="Number of Tweets by the same Tweeter")   
+    
+    # the sentiment ones have median at 2 , neutral at 1
+    qplot(class, ss_Positive, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Sentistrength Positive Score by class",
+   xlab="", ylab="ss_Positive")   
+    
+    # not helpful?
+    qplot(class, ss_Negative, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="entistrength Negative Score by class",
+   xlab="", ylab="ss_Negative")   
+        
+# redo but get rid of tails
+
+# some difference but a lot of overlap
+qplot(class, afinn_sum, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Afinn Score by class",
+   xlab="", ylab="Afinn score ")   
+   
+ggplot(tweets_for_modelling_features_final, aes(x=class, y=afinn_sum, color=class)) + 
+  geom_boxplot(coef=6) +
+coord_cartesian(ylim = quantile(tweets_for_modelling_features_final$afinn_sum, c(0.05, 0.95)))
+    
+    # long tails make this an unhelpful graph
+qplot(class, favorite_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="favorite count by class",
+   xlab="", ylab="Number of Favorites of the  Tweet")   
+    
+    # possible, jen neg and other are much higher
+    qplot(class, retweet_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Retweet Count by class",
+   xlab="", ylab="Number of Retweets of the Tweet")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, followers_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of Followers of the Tweeter by class",
+   xlab="", ylab="Count of Followers")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, friends_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of Friends of the Tweeter by class",
+   xlab="", ylab="Count of Friends")   
+    
+    # long tails make this an unhelpful graph
+    qplot(class, statuses_count, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Count of All Tweets of the Tweeter by class",
+   xlab="", ylab="Number of Tweets by the same Tweeter")   
+    
+    # the sentiment ones have median at 2 , neutral at 1
+    qplot(class, ss_Positive, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="Sentistrength Positive Score by class",
+   xlab="", ylab="ss_Positive")   
+    
+    # not helpful?
+    qplot(class, ss_Negative, data=tweets_for_modelling_features_final, geom=c("boxplot"), 
+   fill=class, main="sentistrength Negative Score by class",
+   xlab="", ylab="ss_Negative",) 
+
+
+# Explore which features have low variance and therefore potentially low information in predicting the class
+
+
+# create a training and test set
+set.seed(123)
+trainindex<-createDataPartition(tweets_for_modelling_features_final$class, p=.8,list=FALSE)
+
+tweets_for_modelling_features_final_train<-tweets_for_modelling_features_final[trainindex,]
+tweets_for_modelling_features_final_test<-tweets_for_modelling_features_final[-trainindex,]
+
+tweets_for_modelling_features2_train<-tweets_for_modelling_features2[trainindex,]
+tweets_for_modelling_features2_test<-tweets_for_modelling_features2[-trainindex,]
+
+
+# Explore which features are correlated; Use chi-square on the counts and spearman on the integers
+
+summary(tweets_for_modelling_features_final)
+# Toronto and new_account are not correlated
+
+toy<-table(tweets_for_modelling_features_final_train$Toronto, tweets_for_modelling_features_final_train$new_account)
+toy
+
+chisq.test(toy)
+
+toy2<-table(tweets_for_modelling_features_final_train$Toronto, tweets_for_modelling_features_final_train$mentions_flag)
+toy2
+
+chisq.test(toy2)
+
+
+library(plyr)
+flags_train<-tweets_for_modelling_features_final_train[,c("Toronto","new_account","reply_flag","mentions_flag","URL_flag","is_quote","is_retweet","verified","photo_flag","class")]
+
+flags<-tweets_for_modelling_features_final[,c("Toronto","new_account","reply_flag","mentions_flag","URL_flag","is_quote","is_retweet","verified","photo_flag","class")]
+
+flagfields_train<-flags_train
+combos <- combn(ncol(flagfields_train),2)
+
+library(gmodels)
+
+adply(combos, 2, function(x) {
+  test <- chisq.test(flagfields_train[, x[1]], flagfields_train[, x[2]])
+  #test2<-CrossTable(flagfields_train[, x[1]], flagfields_train[, x[2]], total.r=TRUE, total.c=TRUE)
+  test3<-table(flagfields_train[, x[1]], flagfields_train[, x[2]])
+
+#print(test2$t)
+#print(test2$chisq)
+print(test3)
+  out <- data.frame("Row" = colnames(flagfields_train)[x[1]]
+                    , "Column" = colnames(flagfields_train[x[2]])
+                    , "Chi.Square" = round(test$statistic,3)
+                    ,  "df"= test$parameter
+                    ,  "p.value" = round(test$p.value, 3)
+                    )
+  return(out)
+
+})  
+
+# In train data:
+# Combinations that have less than a count of five in the table:
+# 
+flagfields_train$type_of_tweet<-ifelse(flagfields_train$reply_flag,"Reply",ifelse(flagfields_train$is_retweet,"RegRetweet",ifelse(flagfields_train$is_quote,"Quote","New")))
+
+flagfields_train<-flagfields_train[,c("Toronto","new_account","mentions_flag","URL_flag","verified","photo_flag","type_of_tweet","class")]
+
+
+# In all data:
+# Combinations that have less than a count of five in the table:
+# 11,15, 21, 27, 31, 36, 39, 43
+
+# mentions and is retweet flags are correlated to all other variables. But as is Class
+
+
+#flags_train_factor <- data.frame(apply(flags_train, 2, as.factor))
+flags_train_factor <- data.frame(apply(flagfields_train, 2, as.factor))
+
+
+# try RFE
+#define the control using a recursive feature selection function using random forests, number of folds =10
+control <- rfeControl(functions=rfFuncs, method="cv", number=7)
+# run the RFE algorithm
+results <- rfe(flags_train_factor[,1:7], flags_train_factor[,8], sizes=c(1:8), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+# method below didnt work
+# learnign vector quantization
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+model <- train(class~., data=flags_train_factor, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+
+#recursive feature selection
+library(mlbench)
+library(caret)
+
+flags_train[1:8,1:8]
+
+# define the control using a recursive feature selection function using random forests, number of folds =10
+control <- rfeControl(functions=rfFuncs, method="cv", number=7)
+# run the RFE algorithm
+results <- rfe(flags_train_factor[,1:7], flags_train_factor[,8], sizes=c(1:9), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+# check with graphs
+
+#print(combos)
+#names(combos)
+
+#Boruta analysis
+install.packages("Boruta")
+library(Boruta)
+
+set.seed(123)
+boruta.train <- Boruta(class~., data = flags_train_factor, doTrace = 2)
+print(boruta.train)
+
+
+#NUMERIC data below -----------------------------------------------------------------------------------
+# normalize and do spearman correlation
+#numerics<-tweets_for_modelling_features_final[,-c("Toronto","new_account","reply_flag","mentions_flag","URL_flag","is_quote","is_retweet","verified","class","photo_flag")]
+
+
+numerics<-tweets_for_modelling_features_final[,c("afinn_sum", "favorite_count", "retweet_count", "followers_count", "friends_count", "statuses_count", "ss_Positive", "ss_Negative")]
+
+
+class_df<-tweets_for_modelling_features_final[,c("class")]
+
+numerics_scale<-as.data.frame(scale(numerics))
+numerics_class<-cbind(numerics_scale,class_df)
+
+summary(numerics_scale)
+
+for (col in 1:ncol(numerics_scale)) {
+    hist(numerics_scale[,col], main=col)
+}
+
+for (col in 1:ncol(numerics)) {
+    hist(numerics[,col], main=col)
+}
+
+
+
+# create training data
+
+numerics_scale_train<-numerics_scale[trainindex,]
+numerics_scale_test<-numerics_scale[-trainindex,]
+
+
+numerics_class_train<-numerics_class[trainindex,]
+numerics_class_test<-numerics_class[-trainindex,]
+
+
+#Spearman on the Numeric Data
+
+cordist <-as.dist(round(cor(numerics_scale_train,method="spearman"),2 ))
+cordist
+
+
+
+
+
+
+install.packages("corrr")
+library(corrr)
+
+numerics_scale_train %>% correlate(method = "spearman") %>% network_plot(min_cor=0.3)
+
+
+
+chart.Correlation(as.matrix(numerics_scale_train),method=c("spearman"), histogram=TRUE, pch=19)
+
+# this is a good one to include
+library("psych")
+corr.test(numerics_scale_train,method="spearman", adjust = "holm", ci=TRUE)
+
+# overkill
+install.packages("mlbench")
+library(mlbench)
+library(caret)
+correlationMatrix <- cor(numerics_scale_train,method=c("spearman"))
+
+
+# duplicate
+# summarize the correlation matrix
+print(correlationMatrix)
+# find attributes that are highly corrected (ideally >0.75)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.5)
+# print indexes of highly correlated attributes
+print(highlyCorrelated)
+# only friends and followers
+
+#CVI technique
+# ensure results are repeatable
+set.seed(7)
+
+# load the data
+
+
+colnames(numerics_class)[9] <- "class"
+colnames(numerics_class_train)[9] <- "class"
+colnames(numerics_class_test)[9] <- "class"
+
+
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+model <- train(class~., data=numerics_class_train, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+
+
+# make new categorical 
+
+# Use PCA on the remaining numerical features?
+
+# use Random Forest on the features 
+# ensure the results are repeatable
+set.seed(7)
+
+
+#recursive feature selection
+
+# define the control using a recursive feature selection function using random forests, number of folds =10
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(numerics_class_train[,1:8], numerics_class_train[,9], sizes=c(1:8), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+#Boruta
+#Boruta analysis
+
+set.seed(123)
+boruta.train <- Boruta(class~., data = numerics_class_train, doTrace = 2)
+print(boruta.train)
+
+
+
+# Create Bag of Words Features
+
+# Trying the bag of words  model
+
+tweets_as_text <- iconv(tweets_for_modelling_features2$text, 'UTF-8', 'ASCII', sub="")
+tweets_as_text_df<-as.data.frame(cbind(tweets_as_text,tweets_for_modelling_features2$class))
+
+library("wordcloud")
+library("tm")
+tweets_as_text_corpus <- VCorpus(VectorSource(tweets_as_text_df$tweets_as_text))
+
+#clean up
+tweets_as_text_corpus <- tm_map(tweets_as_text_corpus, content_transformer(tolower)) 
+
+tweets_as_text_corpus <- tm_map(tweets_as_text_corpus, content_transformer(removePunctuation))
+
+#tweets_as_text_corpus <- tm_map(tweets_as_text_corpus, content_transformer(removeNumbers))
+
+tweets_as_text_corpus <- tm_map(tweets_as_text_corpus, content_transformer(stripWhitespace))
+
+# tweets_as_text_corpus <- tm_map(tweets_as_text_corpus, PlainTextDocument)
+
+meta(tweets_as_text_corpus,"finalclass")<-tweets_for_modelling_features2["class"]
+inspect(tweets_as_text_corpus)
+
+dtm <- DocumentTermMatrix(tweets_as_text_corpus)
+
+inspect(dtm[40:50, 10:15])
+
+
+
+#twentyfivefreq <- findFreqTerms(dtm, 25)
+#length((twentyfivefreq))
+
+
+# Use only most frequent words (twentyfivefreq) to build the DTM..1700 features
+
+#dtm_over25 <- DocumentTermMatrix(tweets_as_text_corpus, control=list(dictionary = twentyfivefreq))
+
+
+
+dtm_notsparse<-removeSparseTerms(dtm, .95)
+
+
+install.packages("RWeka")
+library(RWeka)
+
+NLP_tokenizer <- function(x) {
+  unlist(lapply(ngrams(words(x), 2:2), paste, collapse = "_"), use.names = FALSE)
+}
+
+control_list_ngram = list(tokenize = NLP_tokenizer)
+                          
+                          
+
+
+dtm_ngram<-DocumentTermMatrix(tweets_as_text_corpus, control=list(tokenize=NLP_tokenizer))
+dtm_ngram_notsparse<-removeSparseTerms(dtm_ngram, .975)
+
+#length((dtm_notsparse))
+#inspect(dtm_over25[1:10, 10:15])
+
+# chisquare
+combos_words <- combn(ncol(dtm_over25),2)
+
+library(gmodels)
+
+adply(combos_words, 2, function(x) {
+  test <- chisq.test(dtm_over5[, x[1]], dtm_over5[, x[2]])
+  #test2<-CrossTable(dtm_over5[, x[1]], dtm_over5[, x[2]], total.r=TRUE, total.c=TRUE)
+  #test3<-table(dtm_over5[, x[1]], dtm_over5[, x[2]])
+
+#print(test2$t)
+#print(test2$chisq)
+#print(test3)
+  out <- data.frame("Row" = colnames(dtm_over5)[x[1]]
+                    , "Column" = colnames(dtm_over5[x[2]])
+                    , "Chi.Square" = round(test$statistic,3)
+                    ,  "df"= test$parameter
+                    ,  "p.value" = round(test$p.value, 3)
+                    )
+  return(out)
+
+})  
+
+chisq.test(prop.table(as.matrix(dtm_over5),2))
+
+# Function to convert the word frequencies to yes (presence) and no (absence) labels
+convert_count <- function(x) {
+  y <- ifelse(x > 0, 1,0)
+  y <- factor(y, levels=c(0,1), labels=c("No", "Yes"))
+  y
+}
+
+# Apply the convert_count function to get final training and testing DTMs
+dtm_notsparse <- apply(dtm_notsparse, 2, convert_count)
+dtm_ngram_notsparse<- apply(dtm_ngram_notsparse, 2, convert_count)
+
+#(dtm_over25_binary[40:50, 10:15])
+
+finalclass<-as.data.frame(tweets_for_modelling_features2[,23])
+names(finalclass)[1] <- "finalclass"
+
+
+
+
+dtm_notsparse_class<-cbind(dtm_notsparse,finalclass)
+dtm_ngram_notsparse_class<-cbind(dtm_ngram_notsparse,finalclass)
+
+train_dtm<-as.data.frame(dtm_notsparse_class[trainindex,])
+train_dtm_ngram<-as.data.frame(dtm_ngram_notsparse_class[trainindex,])
+
+train_dtm[1:10,750]
+train_dtm[1:10,"class"]
+
+#define the control using a recursive feature selection function using random forests, number of folds =10
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(train_dtm[,1:65], train_dtm[,66], sizes=c(1:8), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+
+
+#define the control using a recursive feature selection function using random forests, number of folds =10
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(train_dtm_ngram[,1:97], train_dtm_ngram[,98], sizes=c(1:20), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+#Boruta
+#Boruta analysis
+
+set.seed(123)
+boruta.train <- Boruta(finalclass~., data = train_dtm, doTrace = 2)
+print(boruta.train)
+getSelectedAttributes(boruta.train, withTentative = F)
+
+# run below was from full set of words 750 (with 25 or more ). had to reduce to this to get Boruta to even run
+#boruta_full_run<-boruta.train
+#95% sparse matrix
+#boruta_95_sparse<-boruta.train
+
+
+
+
+
+
+
+# Combine the features
+
+tweets_train<-tweets_for_modelling_features2_train[,c("afinn_sum","ss_Negative","retweet_count","ss_Positive","followers_count","Toronto","new_account","reply_flag","URL_flag","is_quote","photo_flag","text","is_retweet","class")]
+
+tweets_train$type_of_tweet<-ifelse(tweets_train$reply_flag,"Reply",ifelse(tweets_train$is_retweet,"RegRetweet",ifelse(tweets_train$is_quote,"Quote","New")))
+
+tweets_train<-tweets_train[,c("afinn_sum","ss_Negative","retweet_count","ss_Positive","followers_count","Toronto","new_account","URL_flag","photo_flag","type_of_tweet")]
+
+#Categorical:
+#type_of_tweet, Toronto, photo_flag, URL_flag, new_account
+#Bag of Words:
+#Faithgoldy,keesmaatmayor,jenkeesmaat,johntory,vote,for,tory,john,topoli
+#Numerical
+#	"retweet_count" "ss_Negative"   "afinn_sum"     "ss_Positive" followers_count      
+
+# add in the bag of words
+""
+BagOfwords<-train_dtm[,c("faithgoldy","keesmaat4mayor","jenkeesmaat","keesmaat","johntory","vote","for","tory","john","topoli","finalclass")]
+tweets_train<-cbind(tweets_train,BagOfwords)
+tweets_train[is.na(tweets_train$afinn_sum),"afinn_sum"]<-0
+tweets_train$type_of_tweet<-as.factor(tweets_train$type_of_tweet)
+
+str(tweets_train)
+summary(tweets_train)
+names(tweets_train)
+make.names(names(tweets_train),unique=TRUE)
+names(tweets_train)
+
+
+# without numeric for NB
+
+tweets_train_nb<-tweets_train
+tweets_train_nb<-tweets_train_nb[,c("Toronto","new_account","URL_flag","photo_flag","type_of_tweet","faithgoldy","keesmaat4mayor","jenkeesmaat","keesmaat","johntory","vote","for","tory","john","topoli","finalclass")]
+
+str(tweets_train_nb)
+
+
+```
+```{r}
+# Modelling Section with Dataset 1 (Features ------------------------------------------------------------------------)
+
+
+
+
+# For Training run 10 x 10 Folds for Naive Bayes and Support Vector Machine. For the Training data use stratified folds
+#Naive Bayes by itself, no numeric data
+ctrl<-trainControl(method="repeatedcv",repeats=100,number=10,sampling = "down")
+#search_grid <- expand.grid(usekernel = c(TRUE, FALSE),fL = 0:5,adjust = seq(0, 5, by = 1))
+
+#model1<-train(finalclass~.,trcontrol=ctrl,method="nb",data=tweets_train_nb,tuneGrid = search_grid,preProc = c(  "scale"))
+model1<-train(finalclass~.,trcontrol=ctrl,method="nb",data=tweets_train_nb)
+confusionMatrix(model1)
+
+#model2 Random Forest full data
+ctrl2<-trainControl(method="repeatedcv",repeats=100,number=10,sampling = "down")
+
+#mtry_def <- floor(sqrt(ncol(tweets_train)))
+#t_grid <- expand.grid(mtry= c(mtry_def/2, mtry_def, 2 * mtry_def))
+
+install.packages("party")
+library(party)
+set.seed(1964)
+model2<-caret::train(finalclass~.,trcontrol=ctrl2,method="cforest",data=tweets_train)
+
+#model2<-train(finalclass~.,trcontrol=ctrl,method="cforest",nbagg=50,data=tweets_train,tuneGrid= t_grid)
+
+
+confusionMatrix(model2)
+
+#Bagged Trees full data
+ctrl<-trainControl(method="repeatedcv",repeats=100,number=10,sampling = "down")
+
+#mtry_def <- floor(sqrt(ncol(tweets_train)))
+#t_grid <- expand.grid(mtry= c(mtry_def/2, mtry_def, 2 * mtry_def))
+
+
+set.seed(1964)
+model3<-train(finalclass ~ . ,trcontrol=ctrl,method="treebag",nbagg=50,data=tweets_train)
+confusionMatrix(model3)
+
+
+
+
+
+
+# Do a paired comparison 
+
+
+
+
+```
+```{r}
+# Exploring the Features and Dimension Reduction
+
+summary(tweets_for_modelling_features_final)
+```
+
